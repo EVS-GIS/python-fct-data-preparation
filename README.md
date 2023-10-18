@@ -10,7 +10,7 @@ The FCT needs these data to work properly :
 ## Installation
 In command line :
 
-```
+``` bash
 # go to the working folder you want to download the mapdo application
 cd Path/to/my/folder
 # copy mapdo repository with git

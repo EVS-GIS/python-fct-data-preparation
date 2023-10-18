@@ -1,23 +1,22 @@
 
-from fct.raster_tools import CreateTilesetFromRasters, ExtractRasterTilesFromTileset
-from fct.vector_tools import ExtractByBoundMask, ExtractBylocation
-from config.config import paths_config, parameters_config
-import subprocess
+import config.config
+import fct.raster_tools
+import fct.vector_tools
+import fct.utils
 
 # parameters
-paths = paths_config()
-params = parameters_config()
+paths = config.config.paths_config()
+params = config.config.parameters_config()
 
 # create dem and landuse tileset
-
-CreateTilesetFromRasters(
+fct.raster_tools.CreateTilesetFromRasters(
     input_dir_path = paths['inputs_dir_landuse_tiles'],
     extension = params['landuse_extension'],
     tileset_path = paths['tileset_landuse'],
     crs = params['crs']
 )
 
-CreateTilesetFromRasters(
+fct.raster_tools.CreateTilesetFromRasters(
     input_dir_path = paths['inputs_dir_dem_tiles'],
     extension = params['dem_extension'],
     tileset_path = paths['tileset_dem'],
@@ -25,33 +24,59 @@ CreateTilesetFromRasters(
 )
 
 # get intersection between mask and tileset
-
-ExtractBylocation(paths['tileset_landuse'], paths['mask'], paths['tileset_mask_landuse'], method = 'intersects')
-ExtractBylocation(paths['tileset_dem'], paths['mask'], paths['tileset_mask_dem'], method = 'intersects')
+fct.vector_tools.ExtractBylocation(paths['tileset_landuse'], paths['mask'], paths['tileset_mask_landuse'], method = 'intersects')
+fct.vector_tools.ExtractBylocation(paths['tileset_dem'], paths['mask'], paths['tileset_mask_dem'], method = 'intersects')
 
 # copy raster tiles
-
-ExtractRasterTilesFromTileset(
+fct.vector_tools.ExtractRasterTilesFromTileset(
     tileset_path = paths['tileset_mask_landuse'],
     raster_dir = paths['inputs_dir_landuse_tiles'],
     dest_dir = paths['outputs_dir_landuse_tiles']
 )
 
-ExtractRasterTilesFromTileset(
+fct.vector_tools.ExtractRasterTilesFromTileset(
     tileset_path = paths['tileset_mask_dem'],
     raster_dir = paths['inputs_dir_dem_tiles'],
     dest_dir = paths['outputs_dir_dem_tiles']
 )
 
 # create virtual raster
+bash_landuse = 'gdalbuildvrt -a_srs "EPSG:{}" "{}" "{}"*"{}"'.format(params['crs'], 
+                                                                      paths['landuse_vrt'], 
+                                                                      paths['outputs_dir_landuse_tiles'], 
+                                                                      params['landuse_extension'])
+fct.utils.process_with_stdout(bash_landuse)
 
-bash_landuse = 'gdalbuildvrt "{}" "{}"*"{}"'.format(paths['landuse_vrt'], paths['outputs_dir_landuse_tiles'], params['landuse_extension'])
-vrt_landuse = subprocess.run(bash_landuse, shell=True, capture_output=True, text=True)
+bash_dem = 'gdalbuildvrt  -a_srs "EPSG:{}" "{}" "{}"*"{}"'.format(params['crs'],
+                                                                  paths['dem_vrt'], 
+                                                                  paths['outputs_dir_dem_tiles'], 
+                                                                  params['dem_extension'])
 
-bash_dem = 'gdalbuildvrt "{}" "{}"*"{}"'.format(paths['dem_vrt'], paths['outputs_dir_dem_tiles'], params['dem_extension'])
-vrt_dem = subprocess.run(bash_dem, shell=True, capture_output=True, text=True)
+bash_dem = 'gdalbuildvrt -a_srs "EPSG:{}" "{}" "{}"*"{}"'.format(params['crs'],
+                                                                  paths['dem_vrt'], 
+                                                                  paths['outputs_dir_dem_tiles'], 
+                                                                  params['dem_extension'])
+fct.utils.process_with_stdout(bash_dem)
 
+# fit landuse pixels on dem
+fct.vector_tools.fit_raster_pixel(raster_to_fit = paths['landuse_vrt'], 
+                 reference_raster = paths['dem_vrt'],
+                 output_raster = paths['landuse_fit'])
+
+# create hydrologic network with strahler order 
+fct.vector_tools.StrahlerOrder(hydro_network = paths['hydro_network'], 
+                               output_network = paths['hydro_network_strahler'],
+                               overwrite=True)
+
+# Create networks sources
+fct.vector_tools.CreateSources(hydro_network = paths['hydro_network_strahler'], 
+                               output_sources = paths['sources'], 
+                               overwrite=True)
+
+### old process to extract from the whole France reference network, now the network must be prepared 
+### on region and manually added in the input folder
 # extract hydro network from mask with contains
+# ExtractBylocation(paths['hydro_network'], paths['mask'], paths['hydro_network_mask'], method = 'contains')
 
-ExtractBylocation(paths['hydro_network'], paths['mask'], paths['hydro_network_mask'], method = 'contains')
+
 

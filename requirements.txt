@@ -2,3 +2,4 @@ rasterio
 pandas
 geopandas
 ipython
+rtree

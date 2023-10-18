@@ -16,9 +16,31 @@ DOCME
 # packages
 import rasterio
 from rasterio.merge import merge
+from rasterio.mask import mask
 import glob
 import os
 import fiona
+from shapely.geometry import shape
+import fct.utils
+
+from config.config import paths_config, parameters_config
+import subprocess
+
+
+paths = paths_config()
+params = parameters_config()
+
+
+def fit_raster_pixel (raster_to_fit, reference_raster, output_raster):
+    
+    ref_raster = rasterio.open(reference_raster)
+
+    command = 'gdalwarp -te {} {} {} {} "{}" "{}" '.format(
+        ref_raster.bounds[0], ref_raster.bounds[1], ref_raster.bounds[2], ref_raster.bounds[3], raster_to_fit, output_raster)
+    
+    fct.utils.process_with_stdout(command)
+    
+
 
 def merge_raster_in_folder(
         input_raster_folder_path: str,
@@ -135,3 +157,18 @@ def ExtractRasterTilesFromTileset(
                     # Lit le contenu du fichier source et écrit dans le fichier de destination
                     dest_file.write(src_file.read())
 
+def ClipRasterByPolygon(raster_path, polygon_path, output_raster_path):
+    with fiona.open(polygon_path, "r") as poly:
+        feature = shape(poly['geometry'])
+
+        with open(raster_path) as src:
+            out_image, out_transform = rasterio.mask.mask(src, feature, crop=True)
+            out_meta = src.meta
+
+            out_meta.update({"driver": "GTiff",
+                    "height": out_image.shape[1],
+                    "width": out_image.shape[2],
+                    "transform": out_transform})
+            
+        with rasterio.open(output_raster_path, "w", **out_meta) as dest:
+            dest.write(out_image)
