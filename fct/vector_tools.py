@@ -18,9 +18,9 @@ import click
 import fiona
 import fiona.crs
 from shapely.geometry import shape, box
-from shapely.ops import unary_union
+from shapely.ops import unary_union, nearest_points
 from rtree import index
-from shapely.geometry import LineString, MultiLineString, mapping, Point
+from shapely.geometry import LineString, MultiLineString, mapping, Point, MultiPoint
 import numpy as np
 
 def ExtractBylocation(input_file, mask_file, output_file, method):
