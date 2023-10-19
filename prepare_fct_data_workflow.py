@@ -68,6 +68,13 @@ fct.vector_tools.StrahlerOrder(hydro_network = paths['hydro_network'],
                                output_network = paths['hydro_network_strahler'],
                                overwrite=True)
 
+# IdentifyNetworkNodes to compute Hack stream order
+fct.vector_tools.IdentifyNetworkNodes(network = paths['hydro_network_strahler'], 
+                                      network_nodes = paths['idn_nodes'], 
+                                      network_identified = paths['idn_lines'], 
+                                      crs = params['crs'])
+
+
 # Create networks sources
 fct.vector_tools.CreateSources(hydro_network = paths['hydro_network_strahler'], 
                                output_sources = paths['sources'], 
