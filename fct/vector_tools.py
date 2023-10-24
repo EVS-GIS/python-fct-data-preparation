@@ -277,7 +277,7 @@ def CreateSources(hydro_network, output_sources, overwrite=True):
             with click.progressbar(hydro) as processing:
             # extract network line with strahler = 1 and create point with first line point coordinates
                 for feature in processing:
-                    if feature['properties']['strahler'] == 1:
+                    if feature['properties']['STRAHLER'] == 1:
                         properties = feature['properties']
                         geom = shape(feature['geometry'])
                         head_point = Point(geom.coords[0][:2])

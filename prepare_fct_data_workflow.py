@@ -26,15 +26,16 @@ fct.raster_tools.CreateTilesetFromRasters(
 # get intersection between mask and tileset
 fct.vector_tools.ExtractBylocation(paths['tileset_landuse'], paths['mask'], paths['tileset_mask_landuse'], method = 'intersects')
 fct.vector_tools.ExtractBylocation(paths['tileset_dem'], paths['mask'], paths['tileset_mask_dem'], method = 'intersects')
+# probleme avec RGEALTI_FXX_0948_6457_MNT_LAMB93_IGN69.asc
 
 # copy raster tiles
-fct.vector_tools.ExtractRasterTilesFromTileset(
+fct.raster_tools.ExtractRasterTilesFromTileset(
     tileset_path = paths['tileset_mask_landuse'],
     raster_dir = paths['inputs_dir_landuse_tiles'],
     dest_dir = paths['outputs_dir_landuse_tiles']
 )
 
-fct.vector_tools.ExtractRasterTilesFromTileset(
+fct.raster_tools.ExtractRasterTilesFromTileset(
     tileset_path = paths['tileset_mask_dem'],
     raster_dir = paths['inputs_dir_dem_tiles'],
     dest_dir = paths['outputs_dir_dem_tiles']
@@ -47,11 +48,6 @@ bash_landuse = 'gdalbuildvrt -a_srs "EPSG:{}" "{}" "{}"*"{}"'.format(params['crs
                                                                       params['landuse_extension'])
 fct.utils.process_with_stdout(bash_landuse)
 
-bash_dem = 'gdalbuildvrt  -a_srs "EPSG:{}" "{}" "{}"*"{}"'.format(params['crs'],
-                                                                  paths['dem_vrt'], 
-                                                                  paths['outputs_dir_dem_tiles'], 
-                                                                  params['dem_extension'])
-
 bash_dem = 'gdalbuildvrt -a_srs "EPSG:{}" "{}" "{}"*"{}"'.format(params['crs'],
                                                                   paths['dem_vrt'], 
                                                                   paths['outputs_dir_dem_tiles'], 
@@ -59,7 +55,7 @@ bash_dem = 'gdalbuildvrt -a_srs "EPSG:{}" "{}" "{}"*"{}"'.format(params['crs'],
 fct.utils.process_with_stdout(bash_dem)
 
 # fit landuse pixels on dem
-fct.vector_tools.fit_raster_pixel(raster_to_fit = paths['landuse_vrt'], 
+fct.raster_tools.fit_raster_pixel(raster_to_fit = paths['landuse_vrt'], 
                  reference_raster = paths['dem_vrt'],
                  output_raster = paths['landuse_fit'])
 
@@ -69,7 +65,7 @@ fct.vector_tools.StrahlerOrder(hydro_network = paths['hydro_network'],
                                overwrite=True)
 
 # Create networks sources
-fct.vector_tools.CreateSources(hydro_network = paths['hydro_network_strahler'], 
+fct.vector_tools.CreateSources(hydro_network = paths['hydro_network'], 
                                output_sources = paths['sources'], 
                                overwrite=True)
 
