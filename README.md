@@ -27,3 +27,5 @@ python3 -m pip install -U pip
 pip install -r requirements.txt
 # create a config.ini file in config folder
 ```
+
+An configuration exemple is in config/config_example.ini. Rename it to config.ini to use it.

@@ -63,20 +63,12 @@ fct.vector_tools.fit_raster_pixel(raster_to_fit = paths['landuse_vrt'],
                  reference_raster = paths['dem_vrt'],
                  output_raster = paths['landuse_fit'])
 
-# create hydrologic network with strahler order 
-fct.vector_tools.StrahlerOrder(hydro_network = paths['hydro_network'], 
-                               output_network = paths['hydro_network_strahler'],
-                               overwrite=True)
+# Prepare the attibut table to the Fluvial Corridor Toolbox needs
+fct.vector_tools.prepare_network_attribut(network = paths['hydro_network'], 
+                                          output = paths['hydro_network_output'],
+                                          crs = params['crs'])
 
 # Create networks sources
 fct.vector_tools.CreateSources(hydro_network = paths['hydro_network_strahler'], 
                                output_sources = paths['sources'], 
                                overwrite=True)
-
-### old process to extract from the whole France reference network, now the network must be prepared 
-### on region and manually added in the input folder
-# extract hydro network from mask with contains
-# ExtractBylocation(paths['hydro_network'], paths['mask'], paths['hydro_network_mask'], method = 'contains')
-
-
-
