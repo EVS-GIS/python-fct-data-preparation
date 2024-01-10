@@ -28,13 +28,13 @@ fct.vector_tools.ExtractBylocation(paths['tileset_landuse'], paths['mask'], path
 fct.vector_tools.ExtractBylocation(paths['tileset_dem'], paths['mask'], paths['tileset_mask_dem'], method = 'intersects')
 
 # copy raster tiles
-fct.vector_tools.ExtractRasterTilesFromTileset(
+fct.raster_tools.ExtractRasterTilesFromTileset(
     tileset_path = paths['tileset_mask_landuse'],
     raster_dir = paths['inputs_dir_landuse_tiles'],
     dest_dir = paths['outputs_dir_landuse_tiles']
 )
 
-fct.vector_tools.ExtractRasterTilesFromTileset(
+fct.raster_tools.ExtractRasterTilesFromTileset(
     tileset_path = paths['tileset_mask_dem'],
     raster_dir = paths['inputs_dir_dem_tiles'],
     dest_dir = paths['outputs_dir_dem_tiles']
@@ -52,10 +52,6 @@ bash_dem = 'gdalbuildvrt  -a_srs "EPSG:{}" "{}" "{}"*"{}"'.format(params['crs'],
                                                                   paths['outputs_dir_dem_tiles'], 
                                                                   params['dem_extension'])
 
-bash_dem = 'gdalbuildvrt -a_srs "EPSG:{}" "{}" "{}"*"{}"'.format(params['crs'],
-                                                                  paths['dem_vrt'], 
-                                                                  paths['outputs_dir_dem_tiles'], 
-                                                                  params['dem_extension'])
 fct.utils.process_with_stdout(bash_dem)
 
 # fit landuse pixels on dem
