@@ -423,3 +423,70 @@ def IdentifyNetworkNodes(network, network_nodes, network_identified, crs):
                     output_feature['properties']['NODEB'] = nearest(b)
                     
                     dst.write(output_feature)
+
+def prepare_network_attribut(network_file, output_file, crs):
+    """
+    Prepare network attributes and create a new output file with additional fields.
+
+    Parameters:
+    - network_file (str): Path to the input network file.
+    - output_file (str): Path to the output file where the modified network will be saved.
+    - crs (dict): Coordinate Reference System information to be used for the output file.
+
+    Returns:
+    None
+
+    Opens the specified network file, adds new fields (CDENTITEHY, AXIS, TOPONYME) to the schema,
+    and creates a new output file with the modified schema and additional fields.
+
+    The new fields are populated based on existing properties in the input network file.
+
+    Raises:
+    IOError: If there is an issue opening or processing the network file.
+    ValueError: If there is an issue with the provided Coordinate Reference System.
+    """
+
+    # open network file
+    with fiona.open(network_file) as source:
+        schema = source.schema.copy()
+        driver=source.driver
+        crs=source.crs
+
+        # define the new fields
+        cdentitehy_field_name = "CDENTITEHY"
+        cdentitehy_field_type = 'str'
+        axis_field_name = "AXIS"
+        axis_field_type = 'int'
+        toponyme_field_name = "TOPONYME"
+        toponyme_field_type = 'str'
+
+        # Add the new fields to the schema
+        schema['properties'][cdentitehy_field_name] = cdentitehy_field_type
+        schema['properties'][axis_field_name] = axis_field_type
+        schema['properties'][toponyme_field_name] = toponyme_field_type
+
+        # open output file in write mode
+        with fiona.open(output_file, 'w', driver=driver, crs=crs, schema=schema) as output:
+
+            # create progressbar during processing
+            with click.progressbar(source) as processing:
+                for feature in processing:
+
+                    # update features new fields
+                    feature['properties'][cdentitehy_field_name] = feature['properties']['code_du_cours_d_eau_bdcarthage']
+                    liens_vers_cours_d_eau = feature['properties']['liens_vers_cours_d_eau']
+                    feature['properties'][axis_field_name] = int(liens_vers_cours_d_eau[8:])
+                    feature['properties'][toponyme_field_name] = feature['properties']['cpx_toponyme_de_cours_d_eau']
+
+                    # create the feature to copy in output file
+                    new_feature = {
+                                            'type': 'Feature',
+                                            'properties': feature['properties'],
+                                            'geometry': feature['geometry'],
+                                        }
+
+                    # write feature in output file
+                    output.write(new_feature)
+
+    print(cdentitehy_field_name + ', ' + axis_field_name + ' and ' + toponyme_field_name + 'fields adds and populate to ' + output_file)
+
