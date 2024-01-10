@@ -18,9 +18,9 @@ import click
 import fiona
 import fiona.crs
 from shapely.geometry import shape, box
-from shapely.ops import unary_union
+from shapely.ops import unary_union, nearest_points
 from rtree import index
-from shapely.geometry import LineString, MultiLineString, mapping, Point
+from shapely.geometry import LineString, MultiLineString, mapping, Point, MultiPoint
 import numpy as np
 
 def ExtractBylocation(input_file, mask_file, output_file, method):
@@ -286,3 +286,207 @@ def CreateSources(hydro_network, output_sources, overwrite=True):
                             'geometry': mapping(head_point),
                             'properties': properties,
                         })
+
+def IdentifyNetworkNodes(network, network_nodes, network_identified, crs):
+    """
+    Identifies network nodes by finding the endpoints of lines in a given network dataset and 
+    quantizing their coordinates. The nodes are output as a separate dataset and their 
+    attributes are added to the input network dataset. 
+    
+    Parameters
+    ----------
+    params : Parameters
+        Input parameters.
+    tileset : str, optional
+        The tileset to use for the input and output datasets. Default is 'default'.
+        
+    Returns
+    -------
+    None
+    
+    Raises
+    ------
+    None
+    """
+    # Step 1
+    click.secho('Get lines endpoints', fg='yellow')
+    coordinates = list()
+    
+    def extract_coordinates(polyline):
+        """ Extract endpoints coordinates
+        """
+
+        a = polyline['coordinates'][0]
+        b = polyline['coordinates'][-1]
+        coordinates.append(tuple(a))
+        coordinates.append(tuple(b))
+        
+    with fiona.open(network) as fs:
+
+        with click.progressbar(fs) as processing:
+            for feature in processing:
+                
+                extract_coordinates(feature['geometry'])
+                
+        # Step 2
+        click.secho('Quantize coordinates', fg='yellow')
+        
+        coordinates = np.array(coordinates)
+        minx = np.min(coordinates[:, 0])
+        miny = np.min(coordinates[:, 1])
+        maxx = np.max(coordinates[:, 0])
+        maxy = np.max(coordinates[:, 1])
+
+        quantization = 1e8
+        kx = (minx == maxx) and 1 or (maxx - minx)
+        ky = (miny == maxy) and 1 or (maxy - miny)
+        sx = kx / quantization
+        sy = ky / quantization
+
+        coordinates = np.int32(np.round((coordinates - (minx, miny)) / (sx, sy)))    
+        
+        # Step 3
+        click.secho('Build endpoints index', fg='yellow')
+        
+        driver = 'GPKG'
+        schema = {
+            'geometry': 'Point',
+            'properties': [
+                ('GID', 'int')
+            ]
+        }
+        crs = fiona.crs.CRS.from_epsg(crs)
+        options = dict(driver=driver, crs=crs, schema=schema)
+        
+        with fiona.open(network_nodes, 'w', **options) as dst:
+            
+            coordinates_map = dict()
+            gid = 0
+            
+            point_index = dict()
+            
+            with click.progressbar(enumerate(coordinates), length=len(coordinates)) as processing:
+                for i, coordinate in processing:
+                    
+                    c = tuple(coordinate)
+                    
+                    if c not in coordinates_map:
+                        
+                        coordinates_map[c] = i
+                        node_coords = (c[0]*sx + minx, c[1]*sy + miny)
+                         
+                        point_index[gid] = Point(node_coords[0], node_coords[1])
+                        
+                        dst.write({
+                            'type': 'Feature',
+                            'geometry': {'type': 'Point', 'coordinates': node_coords},
+                            'properties': {'GID': gid}
+                        }) 
+
+                        gid = gid + 1
+
+            del coordinates
+            del coordinates_map
+            
+        # Step 4
+        click.secho('Output lines with nodes attributes', fg='yellow')
+        
+        nodes_list = MultiPoint(list(point_index.values()))
+
+        def nearest(point):
+            """ Return the nearest point in the point index
+            """
+            nearest_node = nearest_points(point, nodes_list)[1]
+            
+            for candidate in point_index:
+                if point_index[candidate].equals(nearest_node):
+                    return candidate
+                
+            return None
+
+        schema = fs.schema
+        schema['properties']['NODEA'] = 'int:10'
+        schema['properties']['NODEB'] = 'int:10'
+
+        options = dict(driver=driver, crs=crs, schema=schema)
+
+        with fiona.open(network_identified, 'w', **options) as dst:
+            with click.progressbar(fs) as processing:
+                for feature in processing:
+                    
+                    output_feature = feature
+                    
+                    a = Point(output_feature['geometry']['coordinates'][0])
+                    b = Point(output_feature['geometry']['coordinates'][-1])
+                    
+                    output_feature['properties']['NODEA'] = nearest(a)
+                    output_feature['properties']['NODEB'] = nearest(b)
+                    
+                    dst.write(output_feature)
+
+def prepare_network_attribut(network_file, output_file, crs):
+    """
+    Prepare network attributes and create a new output file with additional fields.
+
+    Parameters:
+    - network_file (str): Path to the input network file.
+    - output_file (str): Path to the output file where the modified network will be saved.
+    - crs (dict): Coordinate Reference System information to be used for the output file.
+
+    Returns:
+    None
+
+    Opens the specified network file, adds new fields (CDENTITEHY, AXIS, TOPONYME) to the schema,
+    and creates a new output file with the modified schema and additional fields.
+
+    The new fields are populated based on existing properties in the input network file.
+
+    Raises:
+    IOError: If there is an issue opening or processing the network file.
+    ValueError: If there is an issue with the provided Coordinate Reference System.
+    """
+
+    # open network file
+    with fiona.open(network_file) as source:
+        schema = source.schema.copy()
+        driver=source.driver
+        crs=source.crs
+
+        # define the new fields
+        cdentitehy_field_name = "CDENTITEHY"
+        cdentitehy_field_type = 'str'
+        axis_field_name = "AXIS"
+        axis_field_type = 'int'
+        toponyme_field_name = "TOPONYME"
+        toponyme_field_type = 'str'
+
+        # Add the new fields to the schema
+        schema['properties'][cdentitehy_field_name] = cdentitehy_field_type
+        schema['properties'][axis_field_name] = axis_field_type
+        schema['properties'][toponyme_field_name] = toponyme_field_type
+
+        # open output file in write mode
+        with fiona.open(output_file, 'w', driver=driver, crs=crs, schema=schema) as output:
+
+            # create progressbar during processing
+            with click.progressbar(source) as processing:
+                for feature in processing:
+
+                    # update features new fields
+                    feature['properties'][cdentitehy_field_name] = feature['properties']['code_du_cours_d_eau_bdcarthage']
+                    liens_vers_cours_d_eau = feature['properties']['liens_vers_cours_d_eau']
+                    feature['properties'][axis_field_name] = int(liens_vers_cours_d_eau[8:])
+                    feature['properties'][toponyme_field_name] = feature['properties']['cpx_toponyme_de_cours_d_eau']
+
+                    # create the feature to copy in output file
+                    new_feature = {
+                                            'type': 'Feature',
+                                            'properties': feature['properties'],
+                                            'geometry': feature['geometry'],
+                                        }
+
+                    # write feature in output file
+                    output.write(new_feature)
+
+    print(cdentitehy_field_name + ', ' + axis_field_name + ' and ' + toponyme_field_name + 'fields adds and populate to ' + output_file)
+
