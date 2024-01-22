@@ -488,5 +488,5 @@ def prepare_network_attribut(network_file, output_file, crs):
                     # write feature in output file
                     output.write(new_feature)
 
-    print(cdentitehy_field_name + ', ' + axis_field_name + ' and ' + toponyme_field_name + 'fields adds and populate to ' + output_file)
+    print(cdentitehy_field_name + ', ' + axis_field_name + ' and ' + toponyme_field_name + ' fields adds and populate to ' + output_file)
 
