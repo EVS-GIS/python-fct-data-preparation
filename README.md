@@ -45,6 +45,8 @@ An configuration exemple is in config/config_example.ini. Rename it to config.in
 
 ## How to cite
 
+Manière, L. (2024). python-fct-data-preparation (Version 1.0.0) [Computer software]. https://github.com/EVS-GIS/python-fct-data-preparation
+
 ## Licence
 
 This program is released under the [GNU Public License v3](https://github.com/EVS-GIS/python-fct-data-preparation/blob/main/LICENSE).
