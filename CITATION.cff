@@ -6,7 +6,9 @@ authors:
     orcid: https://orcid.org/0000-0003-0426-2975
 title: "python-fct-data-preparation"
 version: 1.0.0
+repository-code: "https://github.com/EVS-GIS/python-fct-data-preparation"
+license: GPL-3.0 license
 identifiers:
   - type:
     value:
-date-released:
+date-released: 2024-02-19

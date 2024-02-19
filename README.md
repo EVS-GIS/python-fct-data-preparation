@@ -45,12 +45,6 @@ An configuration exemple is in config/config_example.ini. Rename it to config.in
 
 ## How to cite
 
-@software{Maniere_python-fct-data-preparation,
-author = {Manière, Louis},
-title = {{python-fct-data-preparation}},
-version = {1.0.0}
-}
-
 ## Licence
 
 This program is released under the [GNU Public License v3](https://github.com/EVS-GIS/python-fct-data-preparation/blob/main/LICENSE).
