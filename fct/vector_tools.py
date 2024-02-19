@@ -446,9 +446,14 @@ def prepare_network_attribut(network_file, output_file, crs):
     ValueError: If there is an issue with the provided Coordinate Reference System.
     """
 
+    fields_to_remove = ['data_creation', 'date_modification', 'date_d_apparition', 'date_de_confirmation']
+
     # open network file
     with fiona.open(network_file) as source:
-        schema = source.schema.copy()
+        schema = {
+            'geometry': source.schema['geometry'],
+            'properties': {k: v for k, v in source.schema['properties'].items() if k not in fields_to_remove}
+        }
         driver=source.driver
         crs=source.crs
 
@@ -472,6 +477,8 @@ def prepare_network_attribut(network_file, output_file, crs):
             with click.progressbar(source) as processing:
                 for feature in processing:
 
+                    properties = {k: v for k, v in feature['properties'].items() if k not in fields_to_remove}
+
                     # update features new fields
                     feature['properties'][cdentitehy_field_name] = feature['properties']['code_du_cours_d_eau_bdcarthage']
                     liens_vers_cours_d_eau = feature['properties']['liens_vers_cours_d_eau']
@@ -481,7 +488,7 @@ def prepare_network_attribut(network_file, output_file, crs):
                     # create the feature to copy in output file
                     new_feature = {
                                             'type': 'Feature',
-                                            'properties': feature['properties'],
+                                            'properties': properties,
                                             'geometry': feature['geometry'],
                                         }
 
